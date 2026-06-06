@@ -1,40 +1,24 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from embeddings import load_vectorstore
-from dotenv import load_dotenv
-import os
+from langgraph.graph import StateGraph, END
+from state import RAGState
+from nodes import retrieve_node, generate_node, critic_node, reformulate_node, finalize_node, should_retry
 
-load_dotenv()
+def build_self_healing_rag(retriever):
+    graph = StateGraph(RAGState)
 
-PROMPT = PromptTemplate(
-    input_variables=["context", "question"],
-    template="""Answer the question using ONLY the context below.
-Always mention which part of the document supports your answer.
+    graph.add_node("retrieve", retrieve_node(retriever))
+    graph.add_node("generate", generate_node)
+    graph.add_node("critic", critic_node)
+    graph.add_node("reformulate", reformulate_node)
+    graph.add_node("finalize", finalize_node)
 
-Context:
-{context}
+    graph.set_entry_point("retrieve")
+    graph.add_edge("retrieve", "generate")
+    graph.add_edge("generate", "critic")
+    graph.add_conditional_edges("critic", should_retry, {
+        "finalize": "finalize",
+        "reformulate": "reformulate"
+    })
+    graph.add_edge("reformulate", "retrieve")
+    graph.add_edge("finalize", END)
 
-Question: {question}
-
-Answer (with source reference):"""
-)
-
-def format_docs(docs):
-    return "\n\n".join(doc.page_content for doc in docs)
-
-def build_qa_chain():
-    vectorstore = load_vectorstore()
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-    llm = ChatGoogleGenerativeAI(model="models/gemini-3.1-flash-lite",
-    google_api_key=os.environ["GOOGLE_API_KEY"],
-    transport="rest")
-
-    chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | PROMPT
-        | llm
-        | StrOutputParser()
-    )
-    return chain, retriever
+    return graph.compile()
