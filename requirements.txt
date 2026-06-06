@@ -2,11 +2,10 @@ langchain==0.3.25
 langchain-core==0.3.63
 langchain-google-genai==2.0.10
 langchain-community==0.3.24
-langchain-huggingface==0.1.2
+fastembed==0.4.1
 langchain-text-splitters==0.3.8
-langchain-chroma==0.2.4
-chromadb==0.5.23
-sentence-transformers==3.0.1
-streamlit==1.45.1
-python-dotenv==1.0.0
-pypdf==5.1.0
+langchain-chroma==1.1.0
+chromadb==1.5.9
+streamlit==1.58.0
+python-dotenv==1.2.2
+pypdf==6.12.2
