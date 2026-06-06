@@ -1,11 +1,12 @@
-langchain
-langchain-community
-langchain-google-genai
-chromadb==0.5.5
-pypdf
-fastapi
-uvicorn
-python-multipart
-ragas
-datasets
-python-dotenv
+echo langchain==0.3.25 > requirements.txt
+echo langchain-core==0.3.63 >> requirements.txt
+echo langchain-google-genai==2.0.10 >> requirements.txt
+echo langchain-community==0.3.24 >> requirements.txt
+echo langchain-huggingface==0.1.2 >> requirements.txt
+echo langchain-text-splitters==0.3.8 >> requirements.txt
+echo chromadb==0.6.3 >> requirements.txt
+echo sentence-transformers==3.0.1 >> requirements.txt
+echo streamlit==1.45.1 >> requirements.txt
+echo python-dotenv==1.0.0 >> requirements.txt
+echo pypdf==5.1.0 >> requirements.txt
+echo google-generativeai==0.8.3 >> requirements.txt
