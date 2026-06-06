@@ -2,7 +2,7 @@ langchain==0.3.25
 langchain-core==0.3.63
 langchain-google-genai==2.0.10
 langchain-community==0.3.24
-fastembed==0.4.1
+fastembed==0.8.0
 langchain-text-splitters==0.3.8
 langchain-chroma==1.1.0
 chromadb==1.5.9
