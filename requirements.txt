@@ -4,10 +4,9 @@ langchain-google-genai==2.0.10
 langchain-community==0.3.24
 langchain-huggingface==0.1.2
 langchain-text-splitters==0.3.8
-chromadb==0.6.3
+langchain-chroma==0.2.4
+chromadb==0.5.23
 sentence-transformers==3.0.1
 streamlit==1.45.1
 python-dotenv==1.0.0
 pypdf==5.1.0
-google-generativeai==0.8.3
-langchain-chroma==0.1.4
