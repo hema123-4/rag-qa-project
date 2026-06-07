@@ -1,6 +1,6 @@
-# 📄 RAG-Powered Document Q&A System
+# 🔁 Self-Healing RAG — Document Q&A System
 
-A production-ready Retrieval-Augmented Generation (RAG) pipeline that answers questions from documents with zero hallucination. Built with LangChain, ChromaDB, and Google Gemini API — evaluated using the RAGAS framework.
+A production-grade, agentic Retrieval-Augmented Generation (RAG) system that critiques its own answers and self-corrects using a LangGraph stateful workflow. Built with LangChain, ChromaDB, Google Gemini API, and deployed on Render with a Streamlit UI.
 
 ---
 
@@ -10,14 +10,17 @@ A production-ready Retrieval-Augmented Generation (RAG) pipeline that answers qu
 
 ---
 
-## 📌 Project Overview
+## 📌 What Makes This Different From Basic RAG?
 
-This project implements a full RAG pipeline that:
-- Ingests and chunks PDF documents
-- Embeds and stores them in a ChromaDB vector store
-- Retrieves relevant context for any user question
-- Generates grounded answers using Google Gemini LLM
-- Evaluates answer quality using RAGAS metrics
+Most RAG systems just retrieve → generate → return. This system goes further:
+
+| Step | Basic RAG | Self-Healing RAG |
+|------|-----------|-----------------|
+| Retrieve chunks | ✅ | ✅ |
+| Generate answer | ✅ | ✅ |
+| Critic evaluates grounding | ❌ | ✅ |
+| Reformulate query on failure | ❌ | ✅ |
+| Honest refusal if ungrounded | ❌ | ✅ |
 
 ---
 
@@ -26,16 +29,19 @@ This project implements a full RAG pipeline that:
 ```
 User Question
       ↓
- Retriever (ChromaDB + HuggingFace Embeddings)
+  [Retrieve Node] → Fetch top-3 chunks from ChromaDB
       ↓
- Relevant Context Chunks
+  [Generate Node] → LLM generates answer from context
       ↓
- Prompt Template
+  [Critic Node] → "Is this answer grounded in the retrieved chunks?"
       ↓
- Gemini LLM (gemini-3.1-flash-lite)
+   YES → [Finalize] → Return verified answer ✅
+   NO  → [Reformulate Node] → Rewrite query → Retry (max 2x)
       ↓
- Grounded Answer with Source Reference
+   Still failing → "I don't have enough information" ⚠️
 ```
+
+Built as a **stateful, cyclical LangGraph workflow** — not a simple linear chain.
 
 ---
 
@@ -48,7 +54,7 @@ Evaluated on the *"Attention Is All You Need"* paper using the RAGAS framework.
 | Faithfulness | 1.0 | 1.0 | 1.0 | **1.0** |
 | Answer Relevancy | 0.53 | 0.38 | 0.78 | **0.56** |
 
-**Faithfulness: 1.0 / 1.0** — The system never hallucinated. Every answer was fully grounded in the retrieved document context.
+**Faithfulness: 1.0 / 1.0** — Zero hallucination across all test queries.
 
 ---
 
@@ -57,7 +63,8 @@ Evaluated on the *"Attention Is All You Need"* paper using the RAGAS framework.
 | Component | Technology |
 |-----------|------------|
 | LLM | Google Gemini (via LangChain) |
-| Embeddings | HuggingFace `all-MiniLM-L6-v2` |
+| Agentic Workflow | LangGraph (stateful, cyclical graph) |
+| Embeddings | FastEmbed (lightweight, no torch) |
 | Vector Store | ChromaDB |
 | RAG Framework | LangChain |
 | Evaluation | RAGAS (Faithfulness, Answer Relevancy) |
@@ -70,13 +77,16 @@ Evaluated on the *"Attention Is All You Need"* paper using the RAGAS framework.
 
 ```
 rag-qa-project/
-├── app.py              # Streamlit chat UI
-├── rag_chain.py        # RAG pipeline (retriever + LLM chain)
-├── embeddings.py       # ChromaDB vector store setup
-├── ingest.py           # Document ingestion and chunking
-├── eval_data.py        # RAGAS evaluation script
-├── requirements.txt    # Dependencies
-├── render.yaml         # Render deployment config
+├── app.py            # Streamlit chat UI
+├── rag_chain.py      # LangGraph graph definition
+├── nodes.py          # Retrieve, Generate, Critic, Reformulate, Finalize nodes
+├── prompts.py        # All LLM prompt templates
+├── state.py          # RAGState TypedDict
+├── embeddings.py     # ChromaDB vector store setup
+├── ingest.py         # Document ingestion and chunking
+├── eval_data.py      # RAGAS evaluation script
+├── requirements.txt  # Dependencies
+├── render.yaml       # Render deployment config
 └── .gitignore
 ```
 
@@ -107,20 +117,29 @@ Create a `.env` file:
 GOOGLE_API_KEY=your_gemini_api_key_here
 ```
 
-### 5. Ingest your document
-```bash
-python ingest.py
-```
-
-### 6. Run the app
+### 5. Run the app
 ```bash
 streamlit run app.py
 ```
 
-### 7. Run evaluation
+### 6. Run evaluation
 ```bash
 python eval_data.py
 ```
+
+---
+
+## 🔁 Self-Healing Behavior — Example
+
+**Question:** "What is the stock price of Google?"
+*(Asked on the Attention Is All You Need paper)*
+
+- **Basic RAG:** Hallucinated answer or irrelevant response
+- **Self-Healing RAG:**
+  1. Retrieves chunks → generates answer
+  2. Critic detects answer is not grounded
+  3. Reformulates query → retries
+  4. Still not grounded → returns: *"I don't have enough information in the document to answer this accurately."*
 
 ---
 
@@ -128,20 +147,27 @@ python eval_data.py
 
 Deployed on **Render** using `render.yaml`. Every push to `master` triggers an automatic redeploy.
 
+**Start command:**
+```
+streamlit run app.py --server.port $PORT --server.address 0.0.0.0
+```
+
 ---
 
 ## 🔑 Key Features
 
 - **Zero hallucination** — Faithfulness score of 1.0 on RAGAS evaluation
-- **Source references** — Every answer cites which part of the document supports it
-- **Multi-chunk retrieval** — Retrieves top-3 relevant chunks per query
-- **Chat UI** — Clean Streamlit interface with conversation history
-- **Production-ready** — Deployed on Render with environment variable management
+- **Self-healing pipeline** — Critic agent validates every answer before returning
+- **Query reformulation** — Automatically rewrites failed queries and retries
+- **Honest refusal** — Returns "I don't have enough information" instead of making things up
+- **Modular codebase** — Prompts, nodes, state, and graph logic separated into individual files
+- **Lightweight deployment** — Uses FastEmbed instead of torch for Render free tier compatibility
+- **Any PDF** — Upload any document and ask questions about it
 
 ---
 
 ## 👩‍💻 Author
 
-**Hema** — AI Engineer  
-📍 Bengaluru, India  
+**Muchumarri Hemalatha** — AI Engineer
+📍 Bengaluru, India
 🔗 [GitHub](https://github.com/hema123-4)
